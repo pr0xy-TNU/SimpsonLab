@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 
 import javafx.scene.chart.XYChart;
@@ -17,14 +18,18 @@ import static java.lang.Math.cos;
 public class Main {
 
     //Вычислительнеые константы
-    public static final Double lambda = 1.0d;
-    public static final Double modernX = 2.0d;
+    public static final double lambda = 1.0d;
+    public static final double modernX = 2.0d;
     public static final double q = 2.0d;
     public static final double l = 2.0d;
     public static final double E = 2.71828;
     public static final double EPS = 1e-4;
     public static double xx = 0.0d;
+    public static final int SCALE = 4;
 
+    public static final double START = 0.0;
+    public static final double END = 1.0;
+    public static final int POINT_COUNT = 5;
 
     //Накопитель
     public static double accumulator = 0;
@@ -47,28 +52,26 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("Hello world");
-        System.out.println(roundingOf(4.5666));
 
-    /*while (partition <= limit) {
-      accumulator += calculate(partition);
-      partition += partition;
-    }*/
         initStorage();
         printStorage();
-        drawGraph();
+        //drawGraph();
 
-        double a = 0.0, b = 1.0;
+       /* double a = 0.0, b = 1.0;
         double S;
         double I = 0.0;
-        do{
-            S = simpson(a,b);
+        do {
+            S = simpson(a, b);
             I += S;
-            a = b; b += 1.0;
+            a = b;
+            b += 1.0;
             //cout << "I = " << I << ";    b = " << b << endl;
             System.out.println("I = " + I + "; b = " + b);
-        }while(Math.abs(S) < EPS);
+        } while (Math.abs(S) < EPS);
         System.out.println("I = " + I);
-        System.out.println("b = " + b + " (A)");
+        System.out.println("b = " + b + " (A)");*/
+
+        calculateSimpson(START, END);
         //new Thread(Main::drawGraph);
     }
 
@@ -89,9 +92,9 @@ public class Main {
 
     public static double PFunction(double u) {
         double modernQ = 0.0d;
-        modernQ = 2 * q * (
-                ((lambda / u) - 2 * (lambda * lambda * lambda) / (u * u * u)) * Math.sin(u / lambda)
-                        + (2 * lambda / u * u) * cos(u / lambda));
+        modernQ = 2 * q * l * (
+            ((lambda / u) - 2 * (lambda * lambda * lambda) / (u * u * u)) * Math.sin(u / lambda)
+                + (2 * lambda / u * u) * cos(u / lambda));
         modernQ = roundingOf(modernQ);
         return modernQ;
     }
@@ -110,29 +113,33 @@ public class Main {
     public static void drawGraph() {
         //some draw
         org.knowm.xchart.XYChart chart = QuickChart
-                .getChart(Utils.TITLE, Utils.X, Utils.LAMBDA, Utils.FUNCTION, listX, listLambda);
+            .getChart(Utils.TITLE, Utils.X, Utils.LAMBDA, Utils.FUNCTION, listX, listLambda);
         new SwingWrapper<>(chart).displayChart();
 
     }
 
     public static double roundingOf(double number) {
-        return new BigDecimal(number).setScale(3, RoundingMode.UP).doubleValue();
+        return new BigDecimal(number).setScale(SCALE, RoundingMode.UP).doubleValue();
+        //return number;
     }
 
     public static double sh(double u) {
-        return roundingOf((Math.pow(E, u) - Math.pow(E, -u)) / 2);
+        //return roundingOf((Math.pow(E, u) - Math.pow(E, -u)) / 2);
+        return (Math.pow(E, u) - Math.pow(E, -u)) / 2;
     }
 
     public static double ch(double u) {
-        return roundingOf((Math.pow(E, u) + Math.pow(E, -u)) / 2);
+        //return roundingOf((Math.pow(E, u) + Math.pow(E, -u)) / 2);
+        return (Math.pow(E, u) + Math.pow(E, -u)) / 2;
     }
 
     public static void initStorage() {
-        IntStream.range(0, 10).forEach(item -> {
-            listX.add(random.nextDouble() * 100);
-            listLambda.add(random.nextDouble() * 100);
-        });
+
+        for (double i = 0.0, j = 0.0; i < 1.0; i += 0.25) {
+            listX.add(i);
+        }
     }
+
 
     public static void printStorage() {
         System.out.println("lambda");
@@ -145,16 +152,17 @@ public class Main {
 
     public static double simpson(double a, double b) {
         int n = 1;
-        double S1, SP, S;
-        double h, r;
+        double S1 = 0.0, SP = 0.0, S = 0.0;
+        double h = 0.0, r = 0.0;
 
-        S1 = f(a) + f(b);
+        S1 = fCos(a) + fCos(b);
         S = (S1 + 4 * f((a + b) / 2.0)) / 6.0;
 
         do {
             SP = S;
             n = 2 * n;
             h = (b - a) / (2 * n);
+            System.out.println( b + " " + a);
             S = S1;
             for (int i = 1; i < n; i++) {
                 S += 4 * f(a + (2 * i - 1) * h) + 2 * f(a + 2 * i * h);
@@ -164,19 +172,42 @@ public class Main {
             r = Math.abs(S - SP) / 15.0;
 
         } while (r > EPS);
-        return S;
+        return roundingOf(S);
     }
 
     public static double f(double u) {
         if (u == 0) {
             return 1 / (2 * lambda * lambda);
         } else {
+            /*
+            double up = 2 * (sh(u) + u * ch(u)) / (2 * u + sh(2 * u));
+            double down = (1 - cos(u / lambda)) * cos(u * xx / lambda) / (u * u);
+            */
             double temp = 2 * (sh(u) + u * ch(u)) / (2 * u + sh(2 * u));
             return temp * (1 - cos(u / lambda)) * cos(u * xx / lambda) / (u * u);
         }
     }
 
+    public static double calculateSimpson(double start, double end) {
+        double S = 0.0;
+        double I = 0.0;
+        double localStart = start;
+        double localEnd = end;
+
+        do {
+
+            I += simpson(localStart, localEnd);
+            localStart = end;
+            localEnd += 1.0;
+            System.out.printf("%3.3f\t%3.3f\n", I, end);
+
+        } while (Math.abs(S) < E);
+
+        return I;
+    }
+
     public static double fCos(double u) {
         return Math.cos(u);
     }
+
 }
